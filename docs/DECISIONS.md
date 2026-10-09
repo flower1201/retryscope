@@ -14,24 +14,38 @@
 
 ## ADR-003 — Link tool_use by ID, not position
 
-**Decision:** Match `tool_result.tool_use_id` to `tool_use.id`. Unmatched results warn; unmatched uses become `unknown`.
+**Decision:** Match `tool_result.tool_use_id` to `tool_use.id`. Unmatched results warn; unmatched uses become `unknown`. Duplicate `tool_use.id` counted once; conflicting inputs warn and keep first.
 
 **Status:** Accepted
 
-## ADR-004 — Never invent failure
+## ADR-004 — Failure evidence
 
-**Decision:** Absent `tool_result` or ambiguous evidence → `unknown`, not `failure`.
+**Decision:** Keep `success | failure | unknown`.
+
+| Evidence | Status |
+|----------|--------|
+| `is_error === true` | failure |
+| `is_error === false` | success (tool reported no error ≠ task solved) |
+| result present, no `is_error` | success |
+| no matching tool_result | unknown |
+| stderr-only / repeat-only | never auto-failure |
 
 **Status:** Accepted
 
-## ADR-005 — Local-only authorization
+## ADR-005 — Fingerprint / group id privacy
 
-**Decision:** No GitHub remote create/push, no npm publish until user authorizes.
+**Decision:** Internal equality uses canonicalized **original** input (stable key sort) hashed to opaque `inputGroupId`. Do **not** redact-before-hash (that would merge different secrets). Never write raw input/prompts/commands into default CLI/report output.
 
 **Status:** Accepted
 
-## ADR-006 — Fingerprint redaction
+## ADR-006 — Repeated failed tool calls
 
-**Decision:** `inputFingerprint` hashes toolName + redacted input (truncate long strings; redact secret-like keys).
+**Decision:** Rule `REPEATED_FAILED_TOOL_CALL`: same toolName + inputGroupId, within 15 minutes, ≥3 calls, ≥2 confirmed failures. Phrase as *potential* pattern. No timestamps → exclude from this rule (no invented window). Overlapping windows deduped via covered event ids.
+
+**Status:** Accepted
+
+## ADR-007 — Local-only authorization
+
+**Decision:** No GitHub remote create/push, no npm publish until user authorizes. HTML Report Engine HOLD until Detector accepted.
 
 **Status:** Accepted

@@ -1,6 +1,6 @@
 import { Command } from "commander";
+import { analyzeSession } from "../core/analyze.js";
 import { ENGINE_VERSION } from "../version.js";
-import { parseClaudeJsonlFile } from "../parser/claude-jsonl.js";
 
 const program = new Command();
 
@@ -13,30 +13,14 @@ program
 
 program
   .command("analyze")
-  .description("Analyze a Claude Code session JSONL file (parser stage)")
+  .description("Analyze a Claude Code session JSONL for repeated tool failures")
   .argument("<session>", "Path to session .jsonl (explicit path only; no auto-scan)")
   .option("--out <dir>", "Output directory for future reports", "./retryscope-report")
   .action(async (session: string, opts: { out: string }) => {
-    const result = await parseClaudeJsonlFile(session);
-    // Foundation stage: print parse summary only (no HTML yet)
-    const summary = {
-      engineVersion: ENGINE_VERSION,
-      session,
-      out: opts.out,
-      stats: result.stats,
-      eventCount: result.events.length,
-      warnings: result.warnings.slice(0, 20),
-      eventsPreview: result.events.slice(0, 10).map((e) => ({
-        id: e.id,
-        toolName: e.toolName,
-        status: e.status,
-        sequence: e.sequence,
-        inputFingerprint: e.inputFingerprint,
-        sourceLine: e.source.line,
-      })),
-    };
+    const summary = await analyzeSession(session, opts.out);
+    // Privacy: never dump raw prompts/commands; fixture secrets must not appear
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-    if (result.stats.linesParsed === 0 && result.stats.linesTotal > 0) {
+    if (summary.stats.linesParsed === 0 && summary.stats.linesTotal > 0) {
       process.exitCode = 2;
     }
   });

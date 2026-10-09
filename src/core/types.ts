@@ -11,8 +11,11 @@ export interface ToolEvent {
   sequence: number;
   timestamp?: string;
   toolName: string;
-  /** Stable hash of toolName + redacted input shape; never raw secrets. */
-  inputFingerprint?: string;
+  /**
+   * Opaque equality group id (hash of toolName + canonical original input).
+   * Raw input is never stored on the event.
+   */
+  inputGroupId?: string;
   status: ToolStatus;
   /** Why status was chosen (for findings / debugging). */
   statusReason: string;
@@ -36,5 +39,35 @@ export interface ParseResult {
     toolUses: number;
     toolResults: number;
     unmatchedResults: number;
+    duplicateToolUseIds: number;
   };
+}
+
+export interface RetryDetectorOptions {
+  windowMs: number;
+  minCalls: number;
+  minFailures: number;
+}
+
+export interface FindingEvidence {
+  eventId: string;
+  sourceLine: number;
+  status: ToolStatus;
+  timestamp?: string;
+}
+
+export interface RetryFinding {
+  id: string;
+  ruleId: "REPEATED_FAILED_TOOL_CALL";
+  toolName: string;
+  inputGroupId: string;
+  callCount: number;
+  confirmedFailures: number;
+  successCount: number;
+  unknownCount: number;
+  firstTimestamp?: string;
+  lastTimestamp?: string;
+  evidence: FindingEvidence[];
+  explanation: string;
+  limitations: string[];
 }
