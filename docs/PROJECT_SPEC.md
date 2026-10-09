@@ -15,16 +15,16 @@
 
 | Module | Status |
 |--------|--------|
-| CLI (`analyze <session.jsonl> --out`) | Foundation: parse summary JSON to stdout |
-| Claude Code JSONL parser | **This milestone** |
-| Event normalizer / ToolEvent model | **This milestone** |
-| Retry detector | Next milestone |
-| HTML / MD / findings.json reports | Later |
-| Synthetic demo fixture | **This milestone** |
+| CLI (`analyze <session.jsonl> --out`) | **Done** — stdout summary + offline report files |
+| Claude Code JSONL parser | **Done** |
+| Event normalizer / ToolEvent model | **Done** |
+| Retry detector (`REPEATED_FAILED_TOOL_CALL`) | **Done** |
+| HTML / MD / findings.json reports | **Done** (Report Engine) |
+| Synthetic demo fixture | **Done** (`examples/synthetic-session.jsonl`) |
 
 ## Out of scope (P0)
 
-Realtime monitoring, DB, MCP server, cloud, LLM calls, token cost, auto-fix, agent plugins, multi-platform logs, cross-session analysis.
+Realtime monitoring, DB, MCP server, cloud, LLM calls, token cost, auto-fix, agent plugins, multi-platform logs, cross-session analysis. OSS hardening / publish deferred.
 
 ## Claude Code JSONL compatibility (documented)
 
@@ -43,5 +43,6 @@ Unknown / corrupt lines → warnings + skip; never fabricate findings.
 ## Privacy
 
 - Only read the path the user passes (no home-directory scan)
-- Fingerprints use redacted input; reports must not embed full prompts by default
+- Fingerprints hash canonicalized original input to opaque `inputGroupId` (internal only)
+- Public reports omit `inputGroupId`, prompts, commands, and secret-like fields
 - Demo data is synthetic only

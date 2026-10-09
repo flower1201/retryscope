@@ -1,5 +1,7 @@
 import { Command } from "commander";
 import { analyzeSession } from "../core/analyze.js";
+import { projectReportDocument } from "../report/project.js";
+import { writeReportFiles } from "../report/write-report.js";
 import { ENGINE_VERSION } from "../version.js";
 
 const program = new Command();
@@ -13,15 +15,35 @@ program
 
 program
   .command("analyze")
-  .description("Analyze a Claude Code session JSONL for repeated tool failures")
+  .description("Analyze a Claude Code session JSONL and write an offline report")
   .argument("<session>", "Path to session .jsonl (explicit path only; no auto-scan)")
-  .option("--out <dir>", "Output directory for future reports", "./retryscope-report")
+  .option("--out <dir>", "Output directory", "./retryscope-report")
   .action(async (session: string, opts: { out: string }) => {
-    const summary = await analyzeSession(session, opts.out);
-    // Privacy: never dump raw prompts/commands; fixture secrets must not appear
-    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-    if (summary.stats.linesParsed === 0 && summary.stats.linesTotal > 0) {
-      process.exitCode = 2;
+    try {
+      const analysis = await analyzeSession(session, opts.out);
+      const isDemo = /synthetic-session\.jsonl$/i.test(session);
+      const doc = projectReportDocument(analysis, {
+        demoNote: isDemo
+          ? "Synthetic demonstration data. Not a real user session."
+          : undefined,
+      });
+      const written = await writeReportFiles(opts.out, doc);
+
+      const stdoutSummary = {
+        engineVersion: ENGINE_VERSION,
+        session,
+        out: written.outDir,
+        files: written.files,
+        summary: doc.summary,
+        findingsCount: doc.summary.findingsCount,
+        findingIds: doc.findings.map((f) => f.id),
+        warningsCount: doc.summary.warningsCount,
+      };
+      process.stdout.write(`${JSON.stringify(stdoutSummary, null, 2)}\n`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`retryscope: ${message}\n`);
+      process.exitCode = 1;
     }
   });
 

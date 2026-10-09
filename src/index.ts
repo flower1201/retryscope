@@ -21,3 +21,9 @@ export type {
   FindingEvidence,
 } from "./core/types.js";
 export type { AnalyzeSummary } from "./core/analyze.js";
+export { projectReportDocument } from "./report/project.js";
+export { writeReportFiles } from "./report/write-report.js";
+export { renderFindingsJson } from "./report/json.js";
+export { renderSummaryMarkdown } from "./report/markdown.js";
+export { renderHtmlReport } from "./report/html.js";
+export type { ReportDocument } from "./report/types.js";

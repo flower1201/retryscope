@@ -46,6 +46,36 @@
 
 ## ADR-007 — Local-only authorization
 
-**Decision:** No GitHub remote create/push, no npm publish until user authorizes. HTML Report Engine HOLD until Detector accepted.
+**Decision:** No GitHub remote create/push, no npm publish until user authorizes.
+
+**Status:** Accepted
+
+## ADR-008 — Report Engine after Detector
+
+**Decision:** Offline Report Engine ships after Detector GO. Writes `index.html`, `findings.json`, `summary.md` under `--out`. Does not replace CLI JSON summary on stdout.
+
+**Status:** Accepted
+
+## ADR-009 — ReportDocument schemaVersion 1.0
+
+**Decision:** Single projected `ReportDocument` (`schemaVersion: "1.0"`) drives JSON/MD/HTML. Finding ids are stable `RF-00N` in report order. Public projection omits `inputGroupId`, raw inputs, prompts, and command text.
+
+**Status:** Accepted
+
+## ADR-010 — Offline HTML: embedded JSON + textContent
+
+**Decision:** Self-contained `index.html` embeds `const DATA = …` (JSON with `<` → `\u003c`). UI fills DOM via `textContent` / `createElement` only — no `innerHTML` of untrusted strings. Timeline/evidence stay local; no CDN, no fetch.
+
+**Status:** Accepted
+
+## ADR-011 — Honest empty / potential wording
+
+**Decision:** Zero findings → explicit “no patterns under current rule,” never “all good / working perfectly.” Findings phrased as *potential* repeated failures. Synthetic demo may include a short demo note in the document.
+
+**Status:** Accepted
+
+## ADR-012 — Write only known report files
+
+**Decision:** `--out` creates the directory if needed and overwrites only `index.html`, `findings.json`, `summary.md`. Unrelated files in `--out` are left untouched.
 
 **Status:** Accepted
