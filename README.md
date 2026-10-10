@@ -80,7 +80,7 @@ Best-effort subset (format may change across Claude Code versions):
 
 ## Feedback
 
-Use [GitHub Issues](https://github.com/flower1201/retryscope/issues) with **synthetic** reproductions only. See `SECURITY.md`.
+Looking for Claude Code users to try the synthetic demo and say whether the report helps. Use [Discussions](https://github.com/flower1201/retryscope/discussions/1) or [Issues](https://github.com/flower1201/retryscope/issues) with **synthetic** reproductions only. See `SECURITY.md`.
 
 ## License
 
