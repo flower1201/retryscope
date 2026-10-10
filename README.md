@@ -66,7 +66,7 @@ Best-effort subset (format may change across Claude Code versions):
 
 ## Feedback
 
-When the repository is public, use GitHub Issues with **synthetic** reproductions only. See `SECURITY.md`.
+Use [GitHub Issues](https://github.com/flower1201/retryscope/issues) with **synthetic** reproductions only. See `SECURITY.md`.
 
 ## License
 

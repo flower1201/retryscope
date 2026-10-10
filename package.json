@@ -21,6 +21,14 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flower1201/retryscope.git"
+  },
+  "homepage": "https://github.com/flower1201/retryscope#readme",
+  "bugs": {
+    "url": "https://github.com/flower1201/retryscope/issues"
+  },
   "type": "module",
   "private": true,
   "engines": {
