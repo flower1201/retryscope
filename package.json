@@ -1,6 +1,6 @@
 {
   "name": "retryscope",
-  "version": "0.1.0-dev.0",
+  "version": "0.1.0-rc.1",
   "description": "Find out where your AI coding agent got stuck.",
   "main": "./dist/index.js",
   "scripts": {

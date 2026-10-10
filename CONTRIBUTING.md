@@ -12,6 +12,10 @@ npm test
 npm run test:e2e   # requires: npx playwright install chromium
 ```
 
+## Platform notes
+
+- On Windows, the unreadable-file CLI permission test is skipped (`chmod` semantics differ from POSIX). Covered on Linux CI when the repo is public.
+
 ## Guidelines
 
 - Do not upload private agent session logs in issues, PRs, or fixtures.
