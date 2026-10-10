@@ -23,9 +23,19 @@ Then open `examples/out-demo/index.html` in a browser (`file://` works). You sho
 node ./dist/cli/index.js analyze ./examples/synthetic-session.jsonl --out ./examples/out-demo
 ```
 
-Or install the GitHub Pre-release `.tgz` from [Releases](https://github.com/flower1201/retryscope/releases) (when available) — still offline, still no npm publish.
+### Install from GitHub Pre-release (no npm Registry)
 
-## Quick start
+```bash
+curl -fsSL -o retryscope-0.1.0-rc.1.tgz \
+  https://github.com/flower1201/retryscope/releases/download/v0.1.0-rc.1/retryscope-0.1.0-rc.1.tgz
+npm install ./retryscope-0.1.0-rc.1.tgz
+npx retryscope --help
+```
+
+Release page: https://github.com/flower1201/retryscope/releases/tag/v0.1.0-rc.1  
+Still offline. **npm Registry is not published.**
+
+## Quick start (from source)
 
 ```bash
 npm install
