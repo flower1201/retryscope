@@ -1,6 +1,8 @@
-# RetryScope v0.1.0-rc.1 (draft — not released)
+# RetryScope v0.1.0-rc.1
 
-Local release-candidate notes. Do **not** create a GitHub Release until authorized.
+GitHub **Pre-release** for `flower1201/retryscope`. This is a release candidate on GitHub only.
+
+**npm Registry: not published.** Install from source or the attached `.tgz` asset — do not expect `npm install -g retryscope` yet.
 
 ## Highlights
 
@@ -10,15 +12,25 @@ Local release-candidate notes. Do **not** create a GitHub Release until authoriz
 - Privacy whitelist projection (no prompts/commands/`inputGroupId` in reports)
 - `file://` HTML report (no network)
 
-## Install (after public repo / pack)
+## Install from source
 
 ```bash
+git clone https://github.com/flower1201/retryscope.git
+cd retryscope
 npm install
 npm run build
-npx retryscope analyze ./examples/synthetic-session.jsonl --out ./examples/out-demo
+node ./dist/cli/index.js analyze ./examples/synthetic-session.jsonl --out ./examples/out-demo
 ```
 
 Open `examples/out-demo/index.html`.
+
+## Install from Pre-release tarball
+
+Download `retryscope-0.1.0-rc.1.tgz` from this GitHub Release, then:
+
+```bash
+npm install ./retryscope-0.1.0-rc.1.tgz
+```
 
 ## Limitations
 
@@ -27,7 +39,7 @@ Open `examples/out-demo/index.html`.
 - Findings are potential patterns, not proof of wasted loops
 - Custom/MCP tool names shown as `Custom tool`
 
-## Not in this RC
+## Out of scope for this RC
 
-- GitHub remote / npm publish
+- npm Registry publish
 - Multi-agent platforms, realtime monitoring, LLM APIs, auto-fix

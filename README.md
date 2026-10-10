@@ -4,11 +4,13 @@
 
 Local-first CLI that analyzes Claude Code session JSONL for evidence-linked repeated tool failures. No LLM API. No cloud upload. Offline HTML + JSON + Markdown reports.
 
-> Status: **local 0.1.0-rc.1 / not published**. Demo data is **synthetic**. Detects *potential* repeated failures only — not token waste.
+> Status: **0.1.0-rc.1** on GitHub ([Releases](https://github.com/flower1201/retryscope/releases)). Demo data is **synthetic**. Detects *potential* repeated failures only — not token waste. **npm Registry: not published.**
 
 ## Demo (synthetic)
 
 ```bash
+git clone https://github.com/flower1201/retryscope.git
+cd retryscope
 npm install
 npm run demo
 ```
@@ -18,16 +20,18 @@ Then open `examples/out-demo/index.html` in a browser (`file://` works). You sho
 ![Synthetic demo report — timeline, finding RF-001, evidence explorer](docs/assets/rc1-report-demo.png)
 
 ```bash
-npx retryscope analyze ./examples/synthetic-session.jsonl --out ./examples/out-demo
+node ./dist/cli/index.js analyze ./examples/synthetic-session.jsonl --out ./examples/out-demo
 ```
+
+Or install the GitHub Pre-release `.tgz` from [Releases](https://github.com/flower1201/retryscope/releases) (when available) — still offline, still no npm publish.
 
 ## Quick start
 
 ```bash
 npm install
 npm run build
-npx retryscope --help
-npx retryscope analyze /path/to/session.jsonl --out ./retryscope-report
+node ./dist/cli/index.js --help
+node ./dist/cli/index.js analyze /path/to/session.jsonl --out ./retryscope-report
 ```
 
 Writes:
