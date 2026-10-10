@@ -1,3 +1,5 @@
+import { access } from "node:fs/promises";
+import { constants } from "node:fs";
 import { parseClaudeJsonlFile } from "../parser/claude-jsonl.js";
 import { ENGINE_VERSION } from "../version.js";
 import {
@@ -10,6 +12,7 @@ export interface AnalyzeSummary {
   engineVersion: string;
   session: string;
   out: string;
+  usable: boolean;
   stats: ParseResult["stats"] & {
     confirmedFailures: number;
     unknownResults: number;
@@ -29,7 +32,6 @@ export interface AnalyzeSummary {
     evidence: RetryFinding["evidence"];
     explanation: string;
     limitations: string[];
-    // intentionally omit inputGroupId from default CLI? ChatGPT said opaque id ok
     inputGroupId: string;
   }>;
   warnings: ParseResult["warnings"];
@@ -40,13 +42,21 @@ export async function analyzeSession(
   outDir: string,
   options: RetryDetectorOptions = DEFAULT_RETRY_OPTIONS,
 ): Promise<AnalyzeSummary> {
+  try {
+    await access(sessionPath, constants.R_OK);
+  } catch {
+    throw new Error(`Session file not readable: ${sessionPath}`);
+  }
+
   const parsed = await parseClaudeJsonlFile(sessionPath);
   const findings = detectRepeatedFailures(parsed.events, options);
+  const usable = parsed.events.length > 0;
 
   return {
     engineVersion: ENGINE_VERSION,
     session: sessionPath,
     out: outDir,
+    usable,
     stats: {
       ...parsed.stats,
       confirmedFailures: parsed.events.filter((e) => e.status === "failure")

@@ -59,13 +59,9 @@ describe("report engine", () => {
 
   it("escapes script-breaking payloads in HTML embed", async () => {
     const analysis = await analyzeSession(fixture, "./x");
-    // inject hostile warning message through projection path by mutating warnings
-    analysis.warnings.push({
-      line: 1,
-      code: "XSS_TEST",
-      message: '</script><script>alert(1)</script>',
+    const doc = projectReportDocument(analysis, {
+      demoNote: '</script><script>alert(1)</script>',
     });
-    const doc = projectReportDocument(analysis);
     const html = renderHtmlReport(doc);
     expect(html).not.toContain("</script><script>alert");
     expect(html).toContain("\\u003c/script\\u003e");

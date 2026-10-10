@@ -144,7 +144,15 @@ const DATA = ${payload};
   const root = $("findings");
   if (!DATA.findings.length) {
     const p = document.createElement("p");
-    text(p, "No repeated-failure patterns detected under the current rule.");
+    const incomplete = (DATA.warnings || []).some(function (w) {
+      return w.code === "NO_USABLE_EVENTS" || w.code === "EMPTY_INPUT";
+    });
+    text(
+      p,
+      incomplete
+        ? "Analysis incomplete: no usable tool events were parsed. This is not a clean session with zero retries."
+        : "No repeated-failure patterns detected under the current rule.",
+    );
     root.appendChild(p);
   }
 

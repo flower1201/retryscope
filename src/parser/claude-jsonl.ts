@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline";
 import { createReadStream } from "node:fs";
+import { Buffer } from "node:buffer";
 import { canonicalize, groupIdForToolCall } from "../core/fingerprint.js";
 import type { ParseResult, ParseWarning, ToolEvent, ToolStatus } from "../core/types.js";
 import {
@@ -7,6 +8,7 @@ import {
   ToolUseBlockSchema,
   TranscriptLineSchema,
 } from "./schemas.js";
+import { PARSE_LIMITS } from "./limits.js";
 
 interface PendingUse {
   id: string;
@@ -43,6 +45,16 @@ function statusFromResult(isError: boolean | undefined): {
   };
 }
 
+function pushWarning(
+  warnings: ParseWarning[],
+  line: number,
+  code: string,
+  message: string,
+): void {
+  if (warnings.length >= 200) return;
+  warnings.push({ line, code, message });
+}
+
 export async function parseClaudeJsonlFile(
   filePath: string,
 ): Promise<ParseResult> {
@@ -57,6 +69,7 @@ export async function parseClaudeJsonlFile(
   let toolResults = 0;
   let unmatchedResults = 0;
   let duplicateToolUseIds = 0;
+  let stoppedEarly = false;
 
   const stream = createReadStream(filePath, { encoding: "utf8" });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
@@ -64,6 +77,31 @@ export async function parseClaudeJsonlFile(
   for await (const raw of rl) {
     linesTotal += 1;
     const lineNo = linesTotal;
+
+    if (linesTotal > PARSE_LIMITS.maxLines) {
+      pushWarning(
+        warnings,
+        lineNo,
+        "MAX_LINES_REACHED",
+        "Input exceeded line limit; remaining lines not read",
+      );
+      stoppedEarly = true;
+      rl.close();
+      stream.destroy();
+      break;
+    }
+
+    if (Buffer.byteLength(raw, "utf8") > PARSE_LIMITS.maxLineBytes) {
+      linesSkipped += 1;
+      pushWarning(
+        warnings,
+        lineNo,
+        "LINE_TOO_LONG",
+        "Line exceeded size limit; skipped",
+      );
+      continue;
+    }
+
     const trimmed = raw.trim();
     if (!trimmed) {
       linesSkipped += 1;
@@ -75,22 +113,19 @@ export async function parseClaudeJsonlFile(
       json = JSON.parse(trimmed);
     } catch {
       linesSkipped += 1;
-      warnings.push({
-        line: lineNo,
-        code: "INVALID_JSON",
-        message: "Line is not valid JSON; skipped",
-      });
+      pushWarning(warnings, lineNo, "INVALID_JSON", "Line is not valid JSON; skipped");
       continue;
     }
 
     const parsed = TranscriptLineSchema.safeParse(json);
     if (!parsed.success) {
       linesSkipped += 1;
-      warnings.push({
-        line: lineNo,
-        code: "UNKNOWN_SHAPE",
-        message: "Line failed loose schema; skipped",
-      });
+      pushWarning(
+        warnings,
+        lineNo,
+        "UNKNOWN_SHAPE",
+        "Line failed loose schema; skipped",
+      );
       continue;
     }
 
@@ -98,32 +133,51 @@ export async function parseClaudeJsonlFile(
     const row = parsed.data;
     const blocks = contentBlocks(row.message?.content);
 
-    // Optional top-level toolUseResult presence is noted but not required for status
     if ("toolUseResult" in (json as object)) {
       const tur = (json as { toolUseResult?: unknown }).toolUseResult;
-      if (tur !== undefined && tur !== null && typeof tur !== "object" && typeof tur !== "string") {
-        warnings.push({
-          line: lineNo,
-          code: "TOOL_USE_RESULT_SHAPE",
-          message: "toolUseResult has unexpected primitive type; ignored for status",
-        });
+      if (
+        tur !== undefined &&
+        tur !== null &&
+        typeof tur !== "object" &&
+        typeof tur !== "string"
+      ) {
+        pushWarning(
+          warnings,
+          lineNo,
+          "TOOL_USE_RESULT_SHAPE",
+          "toolUseResult has unexpected primitive type; ignored for status",
+        );
       }
     }
 
     if (row.timestamp !== undefined) {
       const t = Date.parse(row.timestamp);
       if (Number.isNaN(t)) {
-        warnings.push({
-          line: lineNo,
-          code: "INVALID_TIMESTAMP",
-          message: `Unparseable timestamp: ${row.timestamp}`,
-        });
+        pushWarning(
+          warnings,
+          lineNo,
+          "INVALID_TIMESTAMP",
+          "Unparseable timestamp; timestamp ignored for this line",
+        );
       }
     }
 
     for (const block of blocks) {
       const use = ToolUseBlockSchema.safeParse(block);
       if (use.success) {
+        if (completed.size + pending.size >= PARSE_LIMITS.maxEvents) {
+          pushWarning(
+            warnings,
+            lineNo,
+            "MAX_EVENTS_REACHED",
+            "Input exceeded event limit; remaining tool uses ignored",
+          );
+          stoppedEarly = true;
+          rl.close();
+          stream.destroy();
+          break;
+        }
+
         toolUses += 1;
         const inputCanon = canonicalize({
           toolName: use.data.name,
@@ -144,17 +198,19 @@ export async function parseClaudeJsonlFile(
               };
             })();
           if (prior.inputCanon && prior.inputCanon !== inputCanon) {
-            warnings.push({
-              line: lineNo,
-              code: "DUPLICATE_TOOL_USE_CONFLICT",
-              message: `Duplicate tool_use.id=${use.data.id} with conflicting input; keeping first`,
-            });
+            pushWarning(
+              warnings,
+              lineNo,
+              "DUPLICATE_TOOL_USE_CONFLICT",
+              "Duplicate tool_use id with conflicting input; keeping first",
+            );
           } else {
-            warnings.push({
-              line: lineNo,
-              code: "DUPLICATE_TOOL_USE",
-              message: `Duplicate tool_use.id=${use.data.id}; counted once`,
-            });
+            pushWarning(
+              warnings,
+              lineNo,
+              "DUPLICATE_TOOL_USE",
+              "Duplicate tool_use id; counted once",
+            );
           }
           continue;
         }
@@ -165,9 +221,11 @@ export async function parseClaudeJsonlFile(
           toolName: use.data.name,
           inputGroupId,
           inputCanon,
-          timestamp: row.timestamp && !Number.isNaN(Date.parse(row.timestamp))
-            ? row.timestamp
-            : undefined,
+          timestamp:
+            row.timestamp && !Number.isNaN(Date.parse(row.timestamp))
+              ? row.timestamp
+              : undefined,
+          // Store basename-only path marker internally; reports never emit file path
           source: { file: filePath, line: lineNo },
           sequence,
         });
@@ -180,19 +238,21 @@ export async function parseClaudeJsonlFile(
         const prior = pending.get(result.data.tool_use_id);
         if (!prior) {
           if (completed.has(result.data.tool_use_id)) {
-            warnings.push({
-              line: lineNo,
-              code: "DUPLICATE_TOOL_RESULT",
-              message: `Extra tool_result for already-completed id=${result.data.tool_use_id}`,
-            });
+            pushWarning(
+              warnings,
+              lineNo,
+              "DUPLICATE_TOOL_RESULT",
+              "Extra tool_result for an already-completed tool use",
+            );
             continue;
           }
           unmatchedResults += 1;
-          warnings.push({
-            line: lineNo,
-            code: "UNMATCHED_TOOL_RESULT",
-            message: `tool_result for unknown tool_use_id=${result.data.tool_use_id}`,
-          });
+          pushWarning(
+            warnings,
+            lineNo,
+            "UNMATCHED_TOOL_RESULT",
+            "tool_result referenced an unknown tool_use id",
+          );
           continue;
         }
         pending.delete(result.data.tool_use_id);
@@ -210,6 +270,8 @@ export async function parseClaudeJsonlFile(
         });
       }
     }
+
+    if (stoppedEarly) break;
   }
 
   for (const prior of pending.values()) {
@@ -226,6 +288,17 @@ export async function parseClaudeJsonlFile(
   }
 
   const events = [...completed.values()].sort((a, b) => a.sequence - b.sequence);
+
+  if (linesTotal === 0) {
+    pushWarning(warnings, 0, "EMPTY_INPUT", "Input file contained no non-empty lines");
+  } else if (events.length === 0) {
+    pushWarning(
+      warnings,
+      0,
+      "NO_USABLE_EVENTS",
+      "No usable tool events were parsed; report is incomplete, not a clean session",
+    );
+  }
 
   return {
     events,

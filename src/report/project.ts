@@ -1,5 +1,6 @@
 import type { AnalyzeSummary } from "../core/analyze.js";
 import type { ReportDocument } from "./types.js";
+import { displayToolName, publicWarningMessage } from "./sanitize.js";
 
 const GLOBAL_LIMITATIONS = [
   "Detection identifies potential repeated-failure patterns, not confirmed wasted loops.",
@@ -8,6 +9,7 @@ const GLOBAL_LIMITATIONS = [
   "Incomplete logs may omit failures.",
   "Claude Code JSONL format may change across versions.",
   "Raw prompts, commands, tool inputs/outputs, tokens, and absolute paths are omitted by default.",
+  "Custom / MCP tool names are shown as a generic label to avoid leaking private service identifiers.",
 ];
 
 /** Project analyzer output into a privacy-safe report document (whitelist). */
@@ -15,24 +17,33 @@ export function projectReportDocument(
   analysis: AnalyzeSummary,
   options?: { demoNote?: string; generatedAt?: string },
 ): ReportDocument {
+  const warnings = analysis.warnings.map((w) => ({
+    code: w.code,
+    line: w.line,
+    message: publicWarningMessage(w.code),
+  }));
+
   return {
     schemaVersion: "1.0",
     engineVersion: analysis.engineVersion,
     generatedAt: options?.generatedAt ?? new Date().toISOString(),
     demoNote: options?.demoNote,
     summary: {
-      totalToolCalls: analysis.stats.toolUses,
-      // Prefer completed events counts for status breakdown
+      // Unique kept tool events (duplicates discarded), not raw tool_use sightings
+      totalToolCalls:
+        analysis.stats.successResults +
+        analysis.stats.confirmedFailures +
+        analysis.stats.unknownResults,
       confirmedFailures: analysis.stats.confirmedFailures,
       successCount: analysis.stats.successResults,
       unknownCount: analysis.stats.unknownResults,
-      findingsCount: analysis.findingsCount,
-      warningsCount: analysis.warnings.length,
+      findingsCount: analysis.findings.length,
+      warningsCount: warnings.length,
     },
     findings: analysis.findings.map((f, index) => ({
       id: `RF-${String(index + 1).padStart(3, "0")}`,
       ruleId: f.ruleId,
-      toolName: f.toolName,
+      toolName: displayToolName(f.toolName),
       callCount: f.callCount,
       confirmedFailures: f.confirmedFailures,
       successCount: f.successCount,
@@ -48,12 +59,7 @@ export function projectReportDocument(
       explanation: f.explanation,
       limitations: f.limitations,
     })),
-    warnings: analysis.warnings.map((w) => ({
-      code: w.code,
-      line: w.line,
-      // Messages are ours; strip accidental long payloads
-      message: w.message.slice(0, 240),
-    })),
+    warnings,
     limitations: GLOBAL_LIMITATIONS,
   };
 }

@@ -79,3 +79,33 @@
 **Decision:** `--out` creates the directory if needed and overwrites only `index.html`, `findings.json`, `summary.md`. Unrelated files in `--out` are left untouched.
 
 **Status:** Accepted
+
+## ADR-013 — Report Engine conditional GO → OSS Hardening
+
+**Decision:** Report Engine accepted with conditions (file:// E2E, invariants, privacy). OSS Hardening GO. GitHub remote / npm publish remain HOLD. No new product features this phase.
+
+**Status:** Accepted
+
+## ADR-014 — ReportDocument invariants
+
+**Decision:** Enforce `findingsCount === findings.length`, `warningsCount === warnings.length`, status counts sum to `totalToolCalls`, per-finding status sum equals `callCount`, stable unique `RF-00N` ids.
+
+**Status:** Accepted
+
+## ADR-015 — Public warning / tool-name projection
+
+**Decision:** Public reports use fixed warning messages by code. Non-standard tool names display as `Custom tool`.
+
+**Status:** Accepted
+
+## ADR-016 — Parse resource limits
+
+**Decision:** Cap line bytes (256 KiB), lines (200k), and events (50k). All-corrupt / empty input → `NO_USABLE_EVENTS` / `EMPTY_INPUT` and CLI exit code 2 (incomplete), not a silent “no findings” success.
+
+**Status:** Accepted
+
+## ADR-017 — file:// is the HTML acceptance target
+
+**Decision:** Primary offline acceptance is Playwright `page.goto(pathToFileURL(...))` without an HTTP server. Localhost preview is not sufficient alone.
+
+**Status:** Accepted

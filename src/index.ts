@@ -26,4 +26,6 @@ export { writeReportFiles } from "./report/write-report.js";
 export { renderFindingsJson } from "./report/json.js";
 export { renderSummaryMarkdown } from "./report/markdown.js";
 export { renderHtmlReport } from "./report/html.js";
+export { checkReportInvariants } from "./report/invariants.js";
+export { displayToolName, publicWarningMessage } from "./report/sanitize.js";
 export type { ReportDocument } from "./report/types.js";

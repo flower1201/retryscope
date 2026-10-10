@@ -22,8 +22,13 @@ export function renderSummaryMarkdown(doc: ReportDocument): string {
   lines.push("## Potential Repeated Failures");
   lines.push("");
   if (doc.findings.length === 0) {
+    const incomplete = doc.warnings.some(
+      (w) => w.code === "NO_USABLE_EVENTS" || w.code === "EMPTY_INPUT",
+    );
     lines.push(
-      "No repeated-failure patterns detected under the current rule.",
+      incomplete
+        ? "Analysis incomplete: no usable tool events were parsed. This is not a clean session with zero retries."
+        : "No repeated-failure patterns detected under the current rule.",
     );
     lines.push("");
   } else {

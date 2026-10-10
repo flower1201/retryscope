@@ -1,0 +1,68 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Unit tests (no Chromium)
+        run: npm test
+
+  e2e-chromium:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: file:// HTML E2E
+        run: npm run test:e2e
+
+  pack:
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm pack
+      - name: Isolated pack install
+        run: |
+          mkdir -p /tmp/rs-pack
+          tar -xzf retryscope-*.tgz -C /tmp/rs-pack
+          cd /tmp/rs-pack/package
+          npm install --omit=dev
+          node ./dist/cli/index.js --help
+          node ./dist/cli/index.js --version
+          cp "$GITHUB_WORKSPACE/examples/synthetic-session.jsonl" ./synthetic-session.jsonl
+          node ./dist/cli/index.js analyze ./synthetic-session.jsonl --out ./retryscope-report
+          test -f ./retryscope-report/index.html
+          test -f ./retryscope-report/findings.json
+          test -f ./retryscope-report/summary.md

@@ -34,15 +34,27 @@ program
         session,
         out: written.outDir,
         files: written.files,
+        usable: analysis.usable,
         summary: doc.summary,
         findingsCount: doc.summary.findingsCount,
         findingIds: doc.findings.map((f) => f.id),
         warningsCount: doc.summary.warningsCount,
+        warningCodes: doc.warnings.map((w) => w.code),
       };
       process.stdout.write(`${JSON.stringify(stdoutSummary, null, 2)}\n`);
+
+      if (!analysis.usable) {
+        process.stderr.write(
+          "retryscope: no usable tool events parsed; report is incomplete\n",
+        );
+        process.exitCode = 2;
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`retryscope: ${message}\n`);
+      // Never echo raw log body; keep short operational errors only
+      const safe =
+        message.length > 300 ? `${message.slice(0, 300)}…` : message;
+      process.stderr.write(`retryscope: ${safe}\n`);
       process.exitCode = 1;
     }
   });
